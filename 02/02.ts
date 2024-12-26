@@ -47,29 +47,20 @@ function shareLetters(boxes: string[]): string {
 			const aID: string = boxes[i];
 			const bID: string = boxes[j];
 
-			const result: { shared: string[]; different: number; isValid: boolean } =
-				{
-					shared: [],
-					different: 0,
-					isValid: true,
-				};
+			let shared: string = "";
+			let different: number = 0;
 
 			for (let k = 0; k < aID.length; k++) {
-				if (aID[k] !== bID[k]) {
-					result.different++;
+				if (aID[k] === bID[k]) {
+					shared += aID[k];
 				} else {
-					result.shared.push(aID[k]);
+					different++;
 				}
 
-				if (result.different > 1) {
-					result.isValid = false;
-					break;
-				}
+				if (different > 1) break;
 			}
 
-			if (result.isValid) {
-				return result.shared.join("");
-			}
+			if (different === 1) return shared;
 		}
 	}
 
