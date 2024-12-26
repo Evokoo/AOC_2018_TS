@@ -7,9 +7,10 @@ export function solveA(fileName: string, day: string): string {
 	const tasks = parseInput(data);
 	return runTasks(tasks);
 }
-export function solveB(fileName: string, day: string): number {
+export function solveB(fileName: string, day: string, helpers: number): number {
 	const data = TOOLS.readData(fileName, day);
-	return 0;
+	const tasks = parseInput(data);
+	return timeTasks(tasks, helpers);
 }
 
 type Requriements = { pre: Set<string>; post: Set<string> };
@@ -34,17 +35,24 @@ function parseInput(data: string): Task[] {
 
 	return [...tasks];
 }
-
-function getValidTasks(taskList: Task[], complete: Set<string>) {
+function getValidTasks(
+	tasks: Task[],
+	complete: Set<string>,
+	inProgress: Set<string> = new Set()
+) {
 	function canPlace(requirements: Set<string>, complete: Set<string>) {
 		return [...requirements].every((id) => complete.has(id));
 	}
 
-	return taskList
-		.filter((task) => !complete.has(task[0]) && canPlace(task[1].pre, complete))
+	return tasks
+		.filter(
+			(task) =>
+				!complete.has(task[0]) &&
+				!inProgress.has(task[0]) &&
+				canPlace(task[1].pre, complete)
+		)
 		.sort((a, b) => a[0].localeCompare(b[0]));
 }
-
 function runTasks(tasks: Task[]) {
 	const complete: Set<string> = new Set();
 
@@ -53,4 +61,39 @@ function runTasks(tasks: Task[]) {
 	}
 
 	return [...complete].join("");
+}
+function timeTasks(tasks: Task[], helpers: number = 2): number {
+	const complete: Set<string> = new Set();
+	const inProgress: Set<string> = new Set();
+	const workers: Map<string, number> = new Map();
+
+	let time = 0;
+
+	while (complete.size < tasks.length) {
+		const validTasks = getValidTasks(tasks, complete, inProgress);
+
+		for (const [id, timer] of [...workers]) {
+			const newTime = Math.max(timer - 1, 0);
+
+			if (newTime === 0) {
+				complete.add(id);
+				inProgress.delete(id);
+				workers.delete(id);
+			} else {
+				workers.set(id, newTime);
+			}
+		}
+
+		while (validTasks.length && workers.size < helpers) {
+			const [id, _] = validTasks.shift()!;
+			const timer = (helpers === 2 ? 0 : 60) + id.charCodeAt(0) - 65;
+
+			workers.set(id, timer);
+			inProgress.add(id);
+		}
+
+		time++;
+	}
+
+	return time;
 }
