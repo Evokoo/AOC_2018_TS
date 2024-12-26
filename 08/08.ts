@@ -24,7 +24,7 @@ function parseInput(data: string): number[] {
 }
 function buildTree(input: number[]): TreeNode {
 	const [childCount, metadataCount] = input.splice(0, 2);
-	const children = [];
+	const children: TreeNode[] = [];
 
 	for (let i = 0; i < childCount; i++) {
 		children.push(buildTree(input));
