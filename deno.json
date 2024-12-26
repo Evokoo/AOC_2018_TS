@@ -1,0 +1,11 @@
+{
+	"tasks": {},
+
+	"imports": {
+		"@std/data-structures": "jsr:@std/data-structures@^1.0.4",
+		"@std/expect": "jsr:@std/expect@^1.0.8",
+		"@std/path": "jsr:@std/path@^1.0.8",
+		"@std/testing": "jsr:@std/testing@^1.0.5",
+		"tools": "./00/tools.ts"
+	}
+}
