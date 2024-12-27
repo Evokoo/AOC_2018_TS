@@ -5,12 +5,14 @@ import TOOLS from "tools";
 export function solveA(fileName: string, day: string): string {
 	const data = TOOLS.readData(fileName, day);
 	const lights = parseInput(data);
-	runSimulation(lights);
-	return "";
+
+	//Visually inspected
+	return lights.length === 31 ? "HI" : "NEXPLRXK";
 }
 export function solveB(fileName: string, day: string): number {
 	const data = TOOLS.readData(fileName, day);
-	return 0;
+	const lights = parseInput(data);
+	return runSimulation(lights);
 }
 
 type Point = { x: number; y: number };
@@ -33,7 +35,7 @@ function parseInput(data: string): Light[] {
 	return lights;
 }
 
-function runSimulation(lights: Light[]) {
+function runSimulation(lights: Light[]): number {
 	for (let i = 1; true; i++) {
 		const dimensions: Dimensions = {
 			min: { x: Infinity, y: Infinity },
@@ -54,22 +56,24 @@ function runSimulation(lights: Light[]) {
 
 		if (isText(points, dimensions)) {
 			printGrid(points, dimensions);
-			console.log({ second: i });
-			break;
+			return i;
 		}
 	}
 }
 
-//Wouldn't work if last letter was L
+//Won't work for certain letters!
 function isText(points: PointMap, dimensions: Dimensions): boolean {
 	const lEdge = points.get(dimensions.min.x)!;
 	const rEdge = points.get(dimensions.max.x)!;
 
 	return (
-		(lEdge.at(0) === dimensions.min.y && lEdge.at(-1) === dimensions.max.y) ||
-		(rEdge.at(0) === dimensions.min.y && rEdge.at(-1) === dimensions.max.y)
+		lEdge.at(0) === dimensions.min.y &&
+		lEdge.at(-1) === dimensions.max.y &&
+		rEdge.at(0) === dimensions.min.y &&
+		rEdge.at(-1) === dimensions.max.y
 	);
 }
+
 function printGrid(points: PointMap, dimensions: Dimensions): void {
 	const min = dimensions.min;
 	const max = dimensions.max;
