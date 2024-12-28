@@ -33,7 +33,6 @@ function parseInput(data: string): PlantData {
 
 	return { plants, notes };
 }
-
 function simulatePlants({ plants, notes }: PlantData, generations: number) {
 	let currentState: Set<number> = plants;
 
