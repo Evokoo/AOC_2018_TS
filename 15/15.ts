@@ -5,7 +5,7 @@ import TOOLS from "tools";
 export function solveA(fileName: string, day: string): number {
 	const data = TOOLS.readData(fileName, day);
 	const battlefield = parseInput(data);
-	// return simulateBattle(battlefield);
+	return simulateBattle(battlefield);
 	return -1;
 }
 export function solveB(fileName: string, day: string): number {
@@ -16,26 +16,23 @@ export function solveB(fileName: string, day: string): number {
 type Walls = Map<number, Set<number>>;
 type Point = { x: number; y: number };
 type Unit = {
+	id: number;
 	type: string;
 	pos: Point;
 	hp: number;
 	attack: number;
+	active: boolean;
 };
-
-interface Battlefield {
-	units: Unit[];
-	walls: Walls;
-}
 type State = {
 	pos: Point;
 	steps: number;
 	path: Point[];
 };
 
-type Target = {
-	index: number;
-	unit: Unit;
-};
+interface Battlefield {
+	units: Unit[];
+	walls: Walls;
+}
 
 // Functions
 function parseInput(data: string): Battlefield {
@@ -56,10 +53,12 @@ function parseInput(data: string): Battlefield {
 				case "E":
 				case "G":
 					units.push({
+						id: units.length,
 						type: tile,
 						pos: { x, y },
 						hp: 200,
 						attack: 3,
+						active: true,
 					});
 					break;
 				default:
@@ -76,142 +75,111 @@ function parseInput(data: string): Battlefield {
 function simulateBattle({ units, walls }: Battlefield): number {
 	let currentState: Unit[] = structuredClone(units);
 
-	for (let i = 0; i < 1; i++) {
-		const activeUnits: Unit[] = currentState.filter((unit) => unit.hp > 0);
+	for (let i = 0; i < 1000; i++) {
+		const activeUnits: Unit[] = currentState
+			.filter((unit) => unit.hp > 0)
+			.sort((a, b) => sortByLocation(a.pos, b.pos));
 
-		for (const [index, unit] of activeUnits.entries()) {
-			//Movement Stage
-			// const move: State = BFS(unit, { units: currentState, walls });
-			if (unit.type === "G") continue;
+		for (const unit of activeUnits) {
+			if (!unit.active) {
+				continue;
+			}
 
-			console.log(unit);
-			console.log(dijkstra(unit, { units: currentState, walls }));
+			// Movement Stage //
+			const currentUnitIndex = activeUnits.findIndex(
+				({ id }) => id === unit.id
+			);
+			const nextPosition: Point = getNextPosition(unit, {
+				units: activeUnits,
+				walls,
+			});
 
-			// if (move && move.path.length) {
-			// 	currentState[index].pos = move.path[0];
-			// }
+			//Update current unit position
+			activeUnits[currentUnitIndex].pos = nextPosition;
 
-			//Attack Stage
-			// const target = getTarget(unit, currentState);
+			// Attack Stage //
+			const targetID = getTargetId(unit, activeUnits);
 
-			// if (target) {
-			// 	currentState[target.index].hp -= unit.attack;
-			// }
+			//Attack if valid id
+			if (targetID !== -1) {
+				const targetIndex = activeUnits.findIndex(({ id }) => id === targetID);
+				activeUnits[targetIndex].hp -= unit.attack;
 
-			//Remove fallen
-			// currentState = currentState.filter((unit) => unit.hp > 0);
+				if (activeUnits[targetIndex].hp <= 0) {
+					activeUnits[targetIndex].active = false;
+				}
+			}
 		}
 
-		// if (!activeBattle(currentState)) {
-		// 	// console.log(currentState);
+		if (!activeBattle(activeUnits)) {
+			console.log(`After ${i} rounds the battle is complete`);
+			// console.log(activeUnits);
+			return getBattleScore(activeUnits, i);
+		}
 
-		// 	console.log(`After ${i} rounds the battle is complete`);
-		// 	return getBattleScore(currentState, i);
-		// }
+		// console.log(i, "\n" + printGrid(activeUnits, walls), activeUnits);
+
+		currentState = activeUnits;
+		// console.log({ i, activeUnits });
+		// console.log(printGrid(activeUnits, walls));
 	}
 
 	throw Error("Battle outcome not found");
 }
 
 function getBattleScore(units: Unit[], round: number) {
-	const unitScore = units.reduce((acc, cur) => acc + cur.hp, 0);
+	const unitScore = units.reduce(
+		(acc, cur) => acc + (cur.active ? cur.hp : 0),
+		0
+	);
 	return unitScore * round;
 }
-function BFS(origin: Unit, { units, walls }: Battlefield) {
-	const queue: State[] = [{ pos: origin.pos, steps: 0, path: [] }];
-	const targets: State[] = [];
-	const visited: Set<string> = new Set();
+function getTargetId(origin: Unit, units: Unit[]): number {
+	const targets: Unit[] = [];
 
-	while (queue.length) {
-		const current = queue.shift()!;
-		const coord = `${current.pos.x},${current.pos.y}`;
-
-		if (visited.has(coord)) {
-			continue;
-		} else {
-			visited.add(coord);
-		}
-
-		for (const [dx, dy] of [
-			[0, 1],
-			[0, -1],
-			[1, 0],
-			[-1, 0],
-		]) {
-			const [nx, ny] = [dx + current.pos.x, dy + current.pos.y];
-
-			if (walls.get(ny)!.has(nx)) {
-				continue;
-			}
-
-			const isUnit = units.find(
-				(unit) => unit.pos.x === nx && unit.pos.y === ny
-			);
-
-			if (isUnit) {
-				if (isUnit.type === origin.type) continue;
-				targets.push(current);
-			} else {
-				queue.push({
-					pos: { x: nx, y: ny },
-					steps: current.steps + 1,
-					path: [...current.path, { x: nx, y: ny }],
-				});
-			}
-		}
-	}
-
-	return targets.sort(
-		(a, b) => a.steps - b.steps || a.pos.y - b.pos.y || a.pos.x - b.pos.x
-	)[0];
-}
-function getTarget(origin: Unit, units: Unit[]): Target {
-	const targets: Target[] = [];
-
-	for (const [index, unit] of units.entries()) {
-		if (unit.type === origin.type || unit.hp < 0) continue;
+	for (const unit of units) {
+		if (unit.type === origin.type || !unit.active) continue;
 
 		if (unit.pos.x === origin.pos.x + 1 && unit.pos.y === origin.pos.y) {
-			targets.push({ index, unit });
+			targets.push(unit);
 		}
 
 		if (unit.pos.x === origin.pos.x - 1 && unit.pos.y === origin.pos.y) {
-			targets.push({ index, unit });
+			targets.push(unit);
 		}
 
 		if (unit.pos.x === origin.pos.x && unit.pos.y === origin.pos.y + 1) {
-			targets.push({ index, unit });
+			targets.push(unit);
 		}
 
 		if (unit.pos.x === origin.pos.x && unit.pos.y === origin.pos.y - 1) {
-			targets.push({ index, unit });
+			targets.push(unit);
 		}
 	}
 
-	return targets.sort(
-		(a, b) => a.unit.hp - b.unit.hp || sortByLocation(a.unit.pos, b.unit.pos)
-	)[0];
+	if (targets.length) {
+		return targets.sort(
+			(a, b) => a.hp - b.hp || sortByLocation(a.pos, b.pos)
+		)[0].id;
+	} else {
+		return -1;
+	}
 }
-function sortByLocation(a: Point, b: Point) {
+function sortByLocation(a: Point, b: Point): number {
 	return a.y - b.y || a.x - b.x;
 }
 function activeBattle(units: Unit[]): boolean {
 	let elfCount = 0;
 	let goblinCount = 0;
 
-	for (const { type } of units) {
-		if (type === "E") elfCount++;
-		if (type === "G") goblinCount++;
-
-		if (elfCount > 0 && goblinCount > 0) {
-			return true;
-		}
+	for (const { type, active } of units) {
+		if (type === "E" && active) elfCount++;
+		if (type === "G" && active) goblinCount++;
 	}
 
-	return false;
+	return elfCount > 0 && goblinCount > 0;
 }
-
-function dijkstra(origin: Unit, { units, walls }: Battlefield): Point {
+function getNextPosition(origin: Unit, { units, walls }: Battlefield): Point {
 	const queue: State[] = [{ pos: origin.pos, steps: 0, path: [] }];
 	const visited: Set<string> = new Set();
 
@@ -238,7 +206,7 @@ function dijkstra(origin: Unit, { units, walls }: Battlefield): Point {
 			}
 
 			const isUnit = units.find(
-				(unit) => unit.pos.x === nx && unit.pos.y === ny && unit.hp > 0
+				(unit) => unit.pos.x === nx && unit.pos.y === ny && unit.active
 			);
 
 			if (isUnit) {
@@ -257,4 +225,71 @@ function dijkstra(origin: Unit, { units, walls }: Battlefield): Point {
 	}
 
 	return origin.pos;
+}
+
+// function BFS(origin: Unit, { units, walls }: Battlefield) {
+// 	const queue: State[] = [{ pos: origin.pos, steps: 0, path: [] }];
+// 	const targets: State[] = [];
+// 	const visited: Set<string> = new Set();
+
+// 	while (queue.length) {
+// 		const current = queue.shift()!;
+// 		const coord = `${current.pos.x},${current.pos.y}`;
+
+// 		if (visited.has(coord)) {
+// 			continue;
+// 		} else {
+// 			visited.add(coord);
+// 		}
+
+// 		for (const [dx, dy] of [
+// 			[0, 1],
+// 			[0, -1],
+// 			[1, 0],
+// 			[-1, 0],
+// 		]) {
+// 			const [nx, ny] = [dx + current.pos.x, dy + current.pos.y];
+
+// 			if (walls.get(ny)!.has(nx)) {
+// 				continue;
+// 			}
+
+// 			const isUnit = units.find(
+// 				(unit) => unit.pos.x === nx && unit.pos.y === ny
+// 			);
+
+// 			if (isUnit) {
+// 				if (isUnit.type === origin.type) continue;
+// 				targets.push(current);
+// 			} else {
+// 				queue.push({
+// 					pos: { x: nx, y: ny },
+// 					steps: current.steps + 1,
+// 					path: [...current.path, { x: nx, y: ny }],
+// 				});
+// 			}
+// 		}
+// 	}
+
+// 	return targets.sort(
+// 		(a, b) => a.steps - b.steps || a.pos.y - b.pos.y || a.pos.x - b.pos.x
+// 	)[0];
+// }
+
+function printGrid(units: Unit[], walls: Walls): string {
+	const grid: string[][] = Array.from({ length: 7 }, () =>
+		Array.from({ length: 7 }, () => ".")
+	);
+
+	for (const [y, xArray] of walls) {
+		for (const x of xArray) {
+			grid[y][x] = "#";
+		}
+	}
+
+	for (const { pos, type, id } of units) {
+		grid[pos.y][pos.x] = String(id);
+	}
+
+	return grid.map((row) => row.join("")).join("\n") + "\n";
 }
