@@ -5,22 +5,26 @@ import TOOLS from "tools";
 export function solveA(fileName: string, day: string): number {
 	const data = TOOLS.readData(fileName, day);
 	const cave = parseInput(data);
-	simulateWater(cave, { x: 500, y: 0 });
-	return 0;
+	return simulateWater(cave, { x: 500, y: 0 });
 }
 export function solveB(fileName: string, day: string): number {
 	const data = TOOLS.readData(fileName, day);
-	return 0;
+	const cave = parseInput(data);
+	return simulateWater(cave, { x: 500, y: 0 }, true);
 }
 
 type Point = { x: number; y: number };
-type Cave = { clay: Map<number, Set<number>>; depth: number };
-type Flow = Point & { direction?: string };
+type Cave = {
+	clay: Map<number, Set<number>>;
+	yLimits: { min: number; max: number };
+	xLimits: { min: number; max: number };
+};
 
 // Functions
 function parseInput(data: string): Cave {
 	const clay: Map<number, Set<number>> = new Map();
-	let depth: number = 0;
+	const yLimits = { min: Infinity, max: -Infinity };
+	const xLimits = { min: Infinity, max: -Infinity };
 
 	for (const line of data.split("\n")) {
 		const xRange = { min: 0, max: 0 };
@@ -38,7 +42,10 @@ function parseInput(data: string): Cave {
 			}
 		}
 
-		depth = Math.max(depth, yRange.max);
+		yLimits.max = Math.max(yLimits.max, yRange.max);
+		yLimits.min = Math.min(yLimits.min, yRange.min);
+		xLimits.max = Math.max(xLimits.max, xRange.max);
+		xLimits.min = Math.min(xLimits.min, xRange.min);
 
 		for (let x = xRange.min; x <= xRange.max; x++) {
 			const yValues = clay.get(x) ?? new Set();
@@ -51,7 +58,7 @@ function parseInput(data: string): Cave {
 		}
 	}
 
-	return { clay, depth };
+	return { clay, yLimits, xLimits };
 }
 
 // function simulateWater({ clay, depth }: Cave, spring: Point) {
@@ -146,64 +153,85 @@ function parseInput(data: string): Cave {
 // }
 
 function printGrid(
-	size: number,
+	yLimits: { min: number; max: number },
+	xLimits: { min: number; max: number },
 	clay: Map<number, Set<number>>,
-	flowing: Map<number, Set<number>>,
+	flow: Map<number, Set<number>>,
 	pool: Map<number, Set<number>>
 ): void {
-	const grid = Array.from({ length: size }, () =>
-		Array.from({ length: size }, () => ".")
+	const height = yLimits.max - yLimits.min + 10;
+	const width = xLimits.max - xLimits.min + 10;
+
+	const grid = Array.from({ length: height }, () =>
+		Array.from({ length: width }, () => ".")
 	);
 
 	for (const [x, yValues] of clay) {
 		for (const y of yValues) {
-			grid[y][x - 494] = "#";
+			grid[Math.max(y - yLimits.min, 0)][x - xLimits.min + 5] = "#";
 		}
 	}
 
-	for (const [x, yValues] of flowing) {
+	for (const [x, yValues] of flow) {
 		for (const y of yValues) {
-			grid[y][x - 494] = "|";
+			grid[Math.max(y - yLimits.min, 0)][x - xLimits.min + 5] = "|";
 		}
 	}
 
 	for (const [x, yValues] of pool) {
 		for (const y of yValues) {
-			grid[y][x - 494] = "~";
+			grid[Math.max(y - yLimits.min, 0)][x - xLimits.min + 5] = "~";
 		}
 	}
 
-	const flatGrid = grid.map((row) => row.join("")).join("\n");
+	const flatGrid: string = grid.map((row) => row.join("")).join("\n");
 
-	console.log(flatGrid);
+	const encoder = new TextEncoder();
+	const encodedData = encoder.encode(flatGrid);
+
+	// console.log(flatGrid);
+	Deno.writeFileSync("maze.txt", encodedData);
 }
 
-function simulateWater({ clay, depth }: Cave, spring: Point) {
+function simulateWater(
+	{ clay, yLimits, xLimits }: Cave,
+	spring: Point,
+	staticWater: boolean = false
+) {
 	const queue: Point[] = [];
 	const pool: Map<number, Set<number>> = new Map();
 	const flow: Map<number, Set<number>> = new Map();
 
-	//Initialize queue
+	// Initialize queue
 	queue.push(verticalFlow(spring));
 
 	while (queue.length) {
-		const current = queue.pop()!;
+		const { x, y } = queue.pop()!;
 
-		if (current.y >= depth) {
+		if (y <= yLimits.min || y >= yLimits.max) {
 			continue;
 		} else {
-			horizontalFlow(current);
+			horizontalFlow({ x, y });
 		}
 	}
 
-	printGrid(15, clay, flow, pool);
+	const total: Set<string> = new Set();
+	const pooled: Set<string> = new Set();
 
-	let total: number = 0;
+	for (const [x, yValues] of flow) {
+		for (const y of yValues) {
+			if (y < yLimits.min) continue;
+			total.add(`${x},${y}`);
+		}
+	}
+	for (const [x, yValues] of pool) {
+		for (const y of yValues) {
+			total.add(`${x},${y}`);
+			pooled.add(`${x}${y}`);
+		}
+	}
 
-	for (const [_, yValues] of pool) total += yValues.size;
-	for (const [_, yValues] of flow) total += yValues.size;
-
-	console.log(total);
+	return staticWater ? pooled.size : total.size;
 
 	// console.log(queue, pool);
 
@@ -217,10 +245,10 @@ function simulateWater({ clay, depth }: Cave, spring: Point) {
 		while (
 			!clayColumn.has(row + 1) &&
 			!poolColumn.has(row + 1) &&
-			row + 1 <= depth
+			row + 1 <= yLimits.max
 		) {
-			flowColumn.add(row);
 			row++;
+			flowColumn.add(row);
 		}
 
 		flow.set(x, flowColumn);
@@ -254,8 +282,6 @@ function simulateWater({ clay, depth }: Cave, spring: Point) {
 
 			right.index++;
 		}
-
-		// console.log({ x, y, left, right });
 
 		if (left.wall && right.wall) {
 			for (let i = left.index; i <= right.index; i++) {
