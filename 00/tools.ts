@@ -93,7 +93,7 @@ function euclideanDistance(a: Point, b: Point): number {
 }
 
 //Identify a repeating pattern within array and predict the value at the nth iteration
-function nthInteration<T>(array: T[], target: number) {
+function nthIteration<T>(array: T[], target: number): T {
 	interface Sequence {
 		index: number;
 		len: number;
@@ -136,5 +136,5 @@ export default {
 	generatePermutations,
 	manhattanDistance,
 	euclideanDistance,
-	nthInteration,
+	nthIteration,
 };
