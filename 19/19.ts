@@ -9,7 +9,11 @@ export function solveA(fileName: string, day: string): number {
 }
 export function solveB(fileName: string, day: string): number {
 	const data = TOOLS.readData(fileName, day);
-	return runProgram(parseInput(data), true);
+
+	// Followed Jonathan Paulson's explaination on YouTube
+	// In short the answer is the divisor sum of largest register once the programs loop
+
+	return runProgramII(parseInput(data));
 }
 
 type Program = {
@@ -30,28 +34,36 @@ function parseInput(data: string): Program {
 
 	return { pointer, inputs };
 }
-function runProgram({ pointer, inputs }: Program, program2: boolean = false) {
+function runProgram({ pointer, inputs }: Program) {
 	const computer = new Computer(pointer);
 
-	if (program2) {
-		computer.setRegister = [1, 0, 0, 0, 0, 0, 0];
-	}
-
-	for (let i = 0; i < 10000; i++) {
-		if (computer.getPointer >= inputs.length) {
-			break;
-		}
-
+	while (computer.getPointer < inputs.length) {
 		computer.run(inputs[computer.getPointer]);
-
-		console.log({ i, register: computer.getRegister.join(",") });
 	}
-
-	// while (computer.getPointer < inputs.length) {
-	// 	computer.run(inputs[computer.getPointer]);
-
-	// 	console.log(computer.getRegister);
-	// }
 
 	return computer.getRegister[0];
+}
+function runProgramII({ pointer, inputs }: Program) {
+	const computer = new Computer(pointer);
+
+	computer.setRegister = [1, 0, 0, 0, 0, 0];
+
+	for (let i = 0; i < inputs.length; i++) {
+		computer.run(inputs[computer.getPointer]);
+	}
+
+	return divisorSum(Math.max(...computer.getRegister));
+}
+function divisorSum(n: number): number {
+	const limit = Math.sqrt(n);
+	let sum = 0;
+
+	for (let i = 1; i <= limit; i++) {
+		if (n % i === 0) {
+			sum += i;
+			sum += n / i;
+		}
+	}
+
+	return sum;
 }
