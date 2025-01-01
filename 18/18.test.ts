@@ -16,13 +16,13 @@ describe(`AOC 2018 - Day ${currentDay}`, () => {
 		});
 	});
 
-	describe.skip("Part B", () => {
-		it("Example", () => {
+	describe("Part B", () => {
+		it.skip("Example", () => {
 			expect(solveB("example_b", currentDay)).toBe(0);
 		});
 
-		it.skip("Solution", () => {
-			expect(solveB("input", currentDay)).toBe(0);
+		it("Solution", () => {
+			expect(solveB("input", currentDay)).toBe(210824);
 		});
 	});
 });

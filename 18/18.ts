@@ -1,16 +1,14 @@
 // Imports
-import { beforeAll } from "@std/testing/bdd";
 import TOOLS from "tools";
 
 //Solutions
 export function solveA(fileName: string, day: string): number {
 	const data = TOOLS.readData(fileName, day);
-
 	return simulate(parseInput(data), 10);
 }
 export function solveB(fileName: string, day: string): number {
 	const data = TOOLS.readData(fileName, day);
-	return 0;
+	return simulate(parseInput(data), 1000);
 }
 
 type Grid = { grid: string[][]; size: number };
@@ -21,8 +19,9 @@ function parseInput(data: string): Grid {
 	const grid = data.split("\n").map((row) => [...row]);
 	return { grid, size: grid.length };
 }
-
 function simulate({ grid, size }: Grid, time: number) {
+	const resourcesValues: number[] = [];
+
 	for (let minute = 0; minute < time; minute++) {
 		const updates: Update[] = [];
 
@@ -39,9 +38,17 @@ function simulate({ grid, size }: Grid, time: number) {
 		for (const { x, y, tile } of updates) {
 			grid[y][x] = tile;
 		}
+
+		if (time > 10) {
+			resourcesValues.push(getResourceValue());
+		}
 	}
 
-	return getResourceValue();
+	if (time > 10) {
+		return TOOLS.nthInteration<number>(resourcesValues, 1000000000);
+	} else {
+		return getResourceValue();
+	}
 
 	function getResourceValue(): number {
 		const resources: Record<string, number> = { "#": 0, "|": 0, ".": 0 };
