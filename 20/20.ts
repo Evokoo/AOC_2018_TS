@@ -5,17 +5,16 @@ import TOOLS from "tools";
 export function solveA(fileName: string, day: string): number {
 	const data = TOOLS.readData(fileName, day);
 	const stack = parseInput(data);
-	// const tree = buildTree(stack);
+	const tree = buildTree(stack);
 
-	console.log(stack);
-
-	return 0;
+	return longestPath(tree);
 }
 export function solveB(fileName: string, day: string): number {
 	const data = TOOLS.readData(fileName, day);
 	return 0;
 }
 
+type Point = { x: number; y: number };
 type Node = {
 	steps: number;
 	parent: Node | null;
@@ -23,25 +22,17 @@ type Node = {
 };
 
 // Functions
-function parseInput(data: string): (number | string)[] {
-	return (data.match(/\w+|\||\(|\)/g) || []).map(Number);
+function parseInput(data: string): string[] {
+	data = data.replace(/\([A-Z]+\|\)/g, "");
+	return data.match(/\w+|\||\(|\)/g) || [];
 }
-function buildTree(stack: string[]): Node {
-	function newNode(route: string, parent: Node | null = null): Node {
-		return {
-			steps: (parent?.steps ?? 0) + route.length,
-			parent,
-			children: [],
-		};
-	}
 
+function buildTree(stack: string[]): Node {
 	const root: Node = newNode(stack.shift()!);
 	let currentNode: Node = root;
 
 	while (stack.length) {
 		const current = stack.shift()!;
-
-		console.log({ current, currentNode });
 
 		if (current === "(") {
 			if (stack.length && /[A-Z]+/.test(stack[0])) {
@@ -54,8 +45,6 @@ function buildTree(stack: string[]): Node {
 		} else if (current === ")") {
 			if (currentNode.parent) {
 				currentNode = currentNode.parent;
-			} else {
-				throw Error("No parent found");
 			}
 		} else if (current === "|") {
 			if (stack.length && /[A-Z]+/.test(stack[0])) {
@@ -66,18 +55,30 @@ function buildTree(stack: string[]): Node {
 				currentNode.children.push(childNode);
 				currentNode = childNode;
 			}
-		} else {
+		} else if (/[A-Z]+/.test(current)) {
 			currentNode.steps += current.length;
 		}
 	}
-
 	return root;
+
+	function newNode(route: string, parent: Node | null = null): Node {
+		return {
+			steps: (parent?.steps ?? 0) + route.length,
+			parent,
+			children: [],
+		};
+	}
 }
 function longestPath(tree: Node): number {
 	let path: number = 0;
+	let bigBoy = 0;
 
 	function DFS(node: Node) {
 		path = Math.max(node.steps, path);
+
+		if (node.steps > 1000) {
+			bigBoy++;
+		}
 
 		for (const child of node.children) {
 			DFS(child);
@@ -86,7 +87,7 @@ function longestPath(tree: Node): number {
 
 	DFS(tree);
 
-	console.log(tree, path);
+	console.log(path, bigBoy);
 
-	return -1;
+	return path;
 }
