@@ -16,8 +16,10 @@ export function solveB(fileName: string, day: string): number {
 type Point = { x: number; y: number };
 type Cave = {
 	clay: Map<number, Set<number>>;
-	yLimits: { min: number; max: number };
-	xLimits: { min: number; max: number };
+	limits: {
+		x: { min: number; max: number };
+		y: { min: number; max: number };
+	};
 };
 
 // Functions
@@ -58,143 +60,11 @@ function parseInput(data: string): Cave {
 		}
 	}
 
-	return { clay, yLimits, xLimits };
-}
-
-// function simulateWater({ clay, depth }: Cave, spring: Point) {
-// 	const queue: Point[] = [];
-// 	const pool: Map<number, Set<number>> = new Map();
-// 	const flowing: Map<number, Set<number>> = new Map();
-
-// 	//Initialize queue
-// 	verticalFlow(spring);
-
-// 	while (queue.length) {
-// 		const { x, y } = queue.pop()!;
-// 		const flowColumn = flowing.get(x) ?? new Set();
-
-// 		if (clay.get(x)?.has(y + 1) || pool.get(x)?.has(y + 1)) {
-// 			horizontalFlow({ x, y });
-// 		} else {
-// 			flowColumn.add(y);
-// 			flowing.set(x, flowColumn);
-// 		}
-// 	}
-
-// 	let total: number = 0;
-
-// 	for (const [_, yValues] of pool) total += yValues.size;
-// 	for (const [_, yValues] of flowing) total += yValues.size;
-
-// 	// printGrid(15, clay, flowing, pool);
-
-// 	return total - 1;
-
-// 	// console.log({ total: pool.size + flowing.size });
-
-// 	function verticalFlow({ x, y }: Point): void {
-// 		for (let i = 0; i + y <= depth; i++) {
-// 			if (clay.get(x)?.has(i + y)) {
-// 				break;
-// 			} else {
-// 				queue.push({ x, y: y + i });
-// 			}
-// 		}
-// 	}
-
-// 	function horizontalFlow(origin: Point): void {
-// 		const points: Flow[] = [origin];
-// 		const visited: Map<number, Set<number>> = new Map();
-// 		let isFlowing = false;
-
-// 		while (points.length) {
-// 			const { x, y, direction } = points.shift()!;
-// 			const clayColumn = clay.get(x) ?? new Set();
-// 			const poolColumn = pool.get(x) ?? new Set();
-// 			const visitedColumn = visited.get(x) ?? new Set();
-
-// 			if (clayColumn.has(y) || visitedColumn.has(y)) {
-// 				continue;
-// 			} else {
-// 				visitedColumn.add(y);
-// 				visited.set(x, visitedColumn);
-// 			}
-
-// 			if (clayColumn.has(y + 1) || poolColumn.has(y + 1)) {
-// 				if (direction === ">") {
-// 					points.push({ x: x + 1, y, direction });
-// 				} else if (direction === "<") {
-// 					points.push({ x: x - 1, y, direction });
-// 				} else {
-// 					points.push({ x: x + 1, y, direction: ">" });
-// 					points.push({ x: x - 1, y, direction: "<" });
-// 				}
-// 			} else {
-// 				verticalFlow({ x, y });
-// 				isFlowing = true;
-// 			}
-// 		}
-
-// 		for (const [x, yValues] of visited) {
-// 			const xFlowing = flowing.get(x) ?? new Set();
-// 			const xPool = pool.get(x) ?? new Set();
-
-// 			for (const y of yValues) {
-// 				if (isFlowing) {
-// 					xFlowing.add(y);
-// 					flowing.set(x, xFlowing);
-// 				} else {
-// 					xPool.add(y);
-// 					pool.set(x, xPool);
-// 				}
-// 			}
-// 		}
-// 	}
-// }
-
-function printGrid(
-	yLimits: { min: number; max: number },
-	xLimits: { min: number; max: number },
-	clay: Map<number, Set<number>>,
-	flow: Map<number, Set<number>>,
-	pool: Map<number, Set<number>>
-): void {
-	const height = yLimits.max - yLimits.min + 10;
-	const width = xLimits.max - xLimits.min + 10;
-
-	const grid = Array.from({ length: height }, () =>
-		Array.from({ length: width }, () => ".")
-	);
-
-	for (const [x, yValues] of clay) {
-		for (const y of yValues) {
-			grid[Math.max(y - yLimits.min, 0)][x - xLimits.min + 5] = "#";
-		}
-	}
-
-	for (const [x, yValues] of flow) {
-		for (const y of yValues) {
-			grid[Math.max(y - yLimits.min, 0)][x - xLimits.min + 5] = "|";
-		}
-	}
-
-	for (const [x, yValues] of pool) {
-		for (const y of yValues) {
-			grid[Math.max(y - yLimits.min, 0)][x - xLimits.min + 5] = "~";
-		}
-	}
-
-	const flatGrid: string = grid.map((row) => row.join("")).join("\n");
-
-	const encoder = new TextEncoder();
-	const encodedData = encoder.encode(flatGrid);
-
-	// console.log(flatGrid);
-	Deno.writeFileSync("maze.txt", encodedData);
+	return { clay, limits: { x: xLimits, y: yLimits } };
 }
 
 function simulateWater(
-	{ clay, yLimits, xLimits }: Cave,
+	{ clay, limits }: Cave,
 	spring: Point,
 	staticWater: boolean = false
 ) {
@@ -208,7 +78,7 @@ function simulateWater(
 	while (queue.length) {
 		const { x, y } = queue.pop()!;
 
-		if (y <= yLimits.min || y >= yLimits.max) {
+		if (y <= limits.y.min || y >= limits.y.max) {
 			continue;
 		} else {
 			horizontalFlow({ x, y });
@@ -220,7 +90,6 @@ function simulateWater(
 
 	for (const [x, yValues] of flow) {
 		for (const y of yValues) {
-			if (y < yLimits.min) continue;
 			total.add(`${x},${y}`);
 		}
 	}
@@ -233,8 +102,6 @@ function simulateWater(
 
 	return staticWater ? pooled.size : total.size;
 
-	// console.log(queue, pool);
-
 	function verticalFlow({ x, y }: Point): Point {
 		const clayColumn = clay.get(x) ?? new Set();
 		const poolColumn = pool.get(x) ?? new Set();
@@ -245,10 +112,13 @@ function simulateWater(
 		while (
 			!clayColumn.has(row + 1) &&
 			!poolColumn.has(row + 1) &&
-			row + 1 <= yLimits.max
+			row + 1 <= limits.y.max
 		) {
 			row++;
-			flowColumn.add(row);
+
+			if (row >= limits.y.min) {
+				flowColumn.add(row);
+			}
 		}
 
 		flow.set(x, flowColumn);
@@ -306,53 +176,4 @@ function simulateWater(
 			}
 		}
 	}
-
-	// function horizontalFlow(origin: Point): void {
-	// 	const points: Flow[] = [origin];
-	// 	const visited: Map<number, Set<number>> = new Map();
-	// 	let isFlowing = false;
-
-	// 	while (points.length) {
-	// 		const { x, y, direction } = points.shift()!;
-	// 		const clayColumn = clay.get(x) ?? new Set();
-	// 		const poolColumn = pool.get(x) ?? new Set();
-	// 		const visitedColumn = visited.get(x) ?? new Set();
-
-	// 		if (clayColumn.has(y) || visitedColumn.has(y)) {
-	// 			continue;
-	// 		} else {
-	// 			visitedColumn.add(y);
-	// 			visited.set(x, visitedColumn);
-	// 		}
-
-	// 		if (clayColumn.has(y + 1) || poolColumn.has(y + 1)) {
-	// 			if (direction === ">") {
-	// 				points.push({ x: x + 1, y, direction });
-	// 			} else if (direction === "<") {
-	// 				points.push({ x: x - 1, y, direction });
-	// 			} else {
-	// 				points.push({ x: x + 1, y, direction: ">" });
-	// 				points.push({ x: x - 1, y, direction: "<" });
-	// 			}
-	// 		} else {
-	// 			verticalFlow({ x, y });
-	// 			isFlowing = true;
-	// 		}
-	// 	}
-
-	// 	for (const [x, yValues] of visited) {
-	// 		const xFlowing = flowing.get(x) ?? new Set();
-	// 		const xPool = pool.get(x) ?? new Set();
-
-	// 		for (const y of yValues) {
-	// 			if (isFlowing) {
-	// 				xFlowing.add(y);
-	// 				flowing.set(x, xFlowing);
-	// 			} else {
-	// 				xPool.add(y);
-	// 				pool.set(x, xPool);
-	// 			}
-	// 		}
-	// 	}
-	// }
 }
