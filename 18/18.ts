@@ -45,7 +45,7 @@ function simulate({ grid, size }: Grid, time: number) {
 	}
 
 	if (time > 10) {
-		return TOOLS.nthInteration<number>(resourcesValues, 1000000000);
+		return TOOLS.nthIteration<number>(resourcesValues, 1000000000);
 	} else {
 		return getResourceValue();
 	}
