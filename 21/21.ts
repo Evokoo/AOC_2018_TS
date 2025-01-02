@@ -11,7 +11,7 @@ export function solveA(fileName: string, day: string): number {
 export function solveB(fileName: string, day: string): number {
 	const data = TOOLS.readData(fileName, day);
 	const program = parseInput(data);
-	return 0;
+	return -1;
 }
 
 type Program = {
