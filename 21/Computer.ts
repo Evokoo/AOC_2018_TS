@@ -78,10 +78,10 @@ export class Computer {
 	}
 
 	// Assignment
-	private setr(a: number, b: number, c: number): void {
+	private setr(a: number, _b: number, c: number): void {
 		this.registers[c] = this.registers[a];
 	}
-	private seti(a: number, b: number, c: number): void {
+	private seti(a: number, _b: number, c: number): void {
 		this.registers[c] = a;
 	}
 
