@@ -4,90 +4,59 @@ import TOOLS from "tools";
 //Solutions
 export function solveA(fileName: string, day: string): number {
 	const data = TOOLS.readData(fileName, day);
-	const stack = parseInput(data);
-	const tree = buildTree(stack);
-
-	return longestPath(tree);
+	return plotPath(data).longest;
 }
 export function solveB(fileName: string, day: string): number {
 	const data = TOOLS.readData(fileName, day);
-	return 0;
+	return plotPath(data, 1000).exceedOrEqualLimit;
 }
 
-type Point = { x: number; y: number };
-type Node = {
-	steps: number;
-	parent: Node | null;
-	children: Node[];
-};
+type Location = [number, number, number];
+type Paths = { longest: number; exceedOrEqualLimit: number };
 
-// Functions
-function parseInput(data: string): string[] {
-	data = data.replace(/\([A-Z]+\|\)/g, "");
-	return data.match(/\w+|\||\(|\)/g) || [];
-}
+function plotPath(input: string, limit: number = 0): Paths {
+	const points: Map<string, number> = new Map();
+	const stack: Location[] = [];
 
-function buildTree(stack: string[]): Node {
-	const root: Node = newNode(stack.shift()!);
-	let currentNode: Node = root;
+	let [x, y, dist] = [0, 0, 0];
 
-	while (stack.length) {
-		const current = stack.shift()!;
+	for (const char of input.slice(1, -1)) {
+		switch (char) {
+			case "(":
+				stack.push([x, y, dist]);
+				break;
+			case ")":
+				[x, y, dist] = stack.pop()!;
+				break;
+			case "|":
+				[x, y, dist] = stack.at(-1)!;
+				break;
+			default: {
+				if (char === "E") x++;
+				if (char === "W") x--;
+				if (char === "N") y--;
+				if (char === "S") y++;
 
-		if (current === "(") {
-			if (stack.length && /[A-Z]+/.test(stack[0])) {
-				const route = stack.shift()!;
-				const childNode = newNode(route, currentNode);
+				dist++;
 
-				currentNode.children.push(childNode);
-				currentNode = childNode;
+				const coord = `${x},${y}`;
+
+				if (!points.has(coord) || dist < points.get(coord)!) {
+					points.set(coord, dist);
+				}
 			}
-		} else if (current === ")") {
-			if (currentNode.parent) {
-				currentNode = currentNode.parent;
-			}
-		} else if (current === "|") {
-			if (stack.length && /[A-Z]+/.test(stack[0])) {
-				const route = stack.shift()!;
-				currentNode = currentNode.parent!;
-				const childNode = newNode(route, currentNode);
-
-				currentNode.children.push(childNode);
-				currentNode = childNode;
-			}
-		} else if (/[A-Z]+/.test(current)) {
-			currentNode.steps += current.length;
-		}
-	}
-	return root;
-
-	function newNode(route: string, parent: Node | null = null): Node {
-		return {
-			steps: (parent?.steps ?? 0) + route.length,
-			parent,
-			children: [],
-		};
-	}
-}
-function longestPath(tree: Node): number {
-	let path: number = 0;
-	let bigBoy = 0;
-
-	function DFS(node: Node) {
-		path = Math.max(node.steps, path);
-
-		if (node.steps > 1000) {
-			bigBoy++;
-		}
-
-		for (const child of node.children) {
-			DFS(child);
 		}
 	}
 
-	DFS(tree);
+	const paths = { longest: 0, exceedOrEqualLimit: 0 };
 
-	console.log(path, bigBoy);
+	for (const [_, dist] of points) {
+		paths.longest = Math.max(paths.longest, dist);
 
-	return path;
+		if (dist >= limit) {
+			paths.exceedOrEqualLimit++;
+		}
+	}
+
+	return paths;
 }
