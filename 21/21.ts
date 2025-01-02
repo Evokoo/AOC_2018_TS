@@ -6,12 +6,12 @@ import { Computer, Input } from "./Computer.ts";
 export function solveA(fileName: string, day: string): number {
 	const data = TOOLS.readData(fileName, day);
 	const program = parseInput(data);
-	return runProgram(program);
+	return runProgram(program)[2];
 }
 export function solveB(fileName: string, day: string): number {
 	const data = TOOLS.readData(fileName, day);
 	const program = parseInput(data);
-	return -1;
+	return runProgramII(program);
 }
 
 type Program = {
@@ -32,7 +32,7 @@ function parseInput(data: string): Program {
 
 	return { pointer, inputs };
 }
-function runProgram({ pointer, inputs }: Program): number {
+function runProgram({ pointer, inputs }: Program): number[] {
 	const computer: Computer = new Computer(pointer);
 
 	while (computer.getPointer < inputs.length) {
@@ -40,10 +40,34 @@ function runProgram({ pointer, inputs }: Program): number {
 		const input = inputs[pointer];
 
 		if (pointer + 1 === 29) {
-			return computer.getRegister[2];
+			return computer.getRegister;
 		} else {
 			computer.run(input);
 		}
+	}
+
+	throw Error("Value not found");
+}
+function runProgramII({ pointer, inputs }: Program): number {
+	const computer: Computer = new Computer(pointer);
+	const values: Set<number> = new Set();
+
+	while (computer.getPointer < inputs.length) {
+		const pointer = computer.getPointer;
+		const input = inputs[pointer];
+
+		if (pointer + 1 === 29) {
+			const c = computer.getRegister[2];
+
+			// Run program until it loops
+			if (values.has(c)) {
+				return [...values].at(-1)!;
+			} else {
+				values.add(c);
+			}
+		}
+
+		computer.run(input);
 	}
 
 	throw Error("Value not found");
