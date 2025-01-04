@@ -145,14 +145,10 @@ function searchSpace({ min, max }: SearchSpace, nanobots: Nanobot[]) {
 function getInitialSearchSpace(nanobots: Nanobot[]): SearchSpace {
 	const min: XYZ = { x: Infinity, y: Infinity, z: Infinity };
 	const max: XYZ = { x: -Infinity, y: -Infinity, z: -Infinity };
-	let trueMax: number = -Infinity;
-	let trueMin: number = Infinity;
 
 	for (const {
 		pos: { x, y, z },
 	} of nanobots) {
-		trueMax = Math.max(...[trueMax, x, y, z]);
-		trueMin = Math.min(...[trueMin, x, y, z]);
 		min.x = Math.min(x, min.x);
 		min.y = Math.min(y, min.y);
 		min.z = Math.min(z, min.z);
@@ -167,8 +163,6 @@ function getInitialSearchSpace(nanobots: Nanobot[]): SearchSpace {
 		count: 0,
 		volume: getSearchVolume(min, max),
 	};
-
-	// return { min, max, count: 0 };
 }
 function inRange(x: number, y: number, z: number, nanobots: Nanobot[]): number {
 	let count = 0;
