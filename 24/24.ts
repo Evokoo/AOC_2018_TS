@@ -6,11 +6,11 @@ import TOOLS from "tools";
 export function solveA(fileName: string, day: string): number {
 	const data = TOOLS.readData(fileName, day);
 	const forces = parseInput(data);
-	return simulateBattle(forces);
+	return simulateBattle(forces).units;
 }
 export function solveB(fileName: string, day: string): number {
 	const data = TOOLS.readData(fileName, day);
-	return 0;
+	return binarySearchBoost(data, 1_000_000);
 }
 
 type Unit = {
@@ -25,11 +25,11 @@ type Unit = {
 	immuneTo: Set<string>;
 	side: number;
 };
-
 type Forces = Map<number, Unit>;
+type Result = { winner: string; units: number };
 
 // Functions
-function parseInput(data: string): Forces {
+function parseInput(data: string, boost: number = 0): Forces {
 	const sections = data
 		.split("\n\n")
 		.map((section) => section.split("\n").slice(1));
@@ -56,14 +56,16 @@ function parseInput(data: string): Forces {
 				}
 			}
 
+			const attackPower = Number(attack) + (i === 0 ? boost : 0);
+
 			const unit: Unit = {
 				id: forces.size,
 				unitCount: Number(unitCount),
 				hp: Number(health),
-				attack: Number(attack),
+				attack: attackPower,
 				attackType,
 				initiative: Number(initiative),
-				effectivePower: Number(unitCount) * Number(attack),
+				effectivePower: Number(unitCount) * attackPower,
 				weakTo,
 				immuneTo,
 				side: i,
@@ -75,50 +77,25 @@ function parseInput(data: string): Forces {
 
 	return forces;
 }
-function simulateBattle(forces: Forces) {
-	const targetMap: Map<number, Set<number>> = new Map();
-
-	for (let i = 0; i < forces.size; i++) {
-		const targets: Set<number> = new Set();
-		const attacker = forces.get(i)!;
-
-		for (let j = 0; j < forces.size; j++) {
-			if (i === j) continue;
-			const defending = forces.get(j)!;
-
-			if (getDamage(attacker, defending) > 0) {
-				targets.add(j);
-			}
-		}
-		if (targets.size) {
-			targetMap.set(i, targets);
-		}
-	}
+function simulateBattle(forces: Forces): Result {
+	const targetMap = getTargetMap(forces);
+	const roundResults: Set<string> = new Set();
 
 	while (true) {
 		//Target order
-		const order = [...forces].sort(
-			(a, b) =>
-				b[1].effectivePower - a[1].effectivePower ||
-				b[1].initiative - a[1].initiative
-		);
+		const order = [...forces].sort((a, b) => sortForces(a[1], b[1]));
 
 		//Target Phase
+		const engaged: Set<number> = new Set();
 		const battles: BinaryHeap<[number, number, number]> = new BinaryHeap(
 			(a, b) => b[2] - a[2]
 		);
-		const engaged: Set<number> = new Set();
 
 		for (const [id, unit] of order) {
 			if (targetMap.has(id)) {
 				const targets = [...targetMap.get(id)!]
 					.map((id) => forces.get(id)!)
-					.sort(
-						(a, b) =>
-							getDamage(unit, b) - getDamage(unit, a) ||
-							b.effectivePower - a.effectivePower ||
-							b.initiative - a.initiative
-					);
+					.sort((a, b) => sortForTargeting(a, b, unit));
 
 				for (const target of targets) {
 					if (target && !engaged.has(target.id)) {
@@ -155,7 +132,15 @@ function simulateBattle(forces: Forces) {
 		}
 
 		if (armyScore[0] === 0 || armyScore[1] === 0) {
-			return Math.max(...armyScore);
+			const winner = armyScore[0] === 0 ? "Infection" : "Immunity";
+			return { winner, units: Math.max(...armyScore) };
+		}
+
+		//Exit if battle result has been seen before
+		if (roundResults.has(`${armyScore[0]}-${armyScore[1]}`)) {
+			return { winner: "Infection", units: -1 };
+		} else {
+			roundResults.add(`${armyScore[0]}-${armyScore[1]}`);
 		}
 	}
 }
@@ -185,4 +170,57 @@ function getBattleResult(attacking: Unit, defending: Unit): Unit | null {
 		const effectivePower = unitCount * defending.attack;
 		return { ...defending, unitCount, effectivePower };
 	}
+}
+function getTargetMap(forces: Forces): Map<number, Set<number>> {
+	const targetMap: Map<number, Set<number>> = new Map();
+
+	for (let i = 0; i < forces.size; i++) {
+		const targets: Set<number> = new Set();
+		const attacker = forces.get(i)!;
+
+		for (let j = 0; j < forces.size; j++) {
+			if (i === j) continue;
+			const defending = forces.get(j)!;
+
+			if (getDamage(attacker, defending) > 0) {
+				targets.add(j);
+			}
+		}
+		if (targets.size) {
+			targetMap.set(i, targets);
+		}
+	}
+
+	return targetMap;
+}
+function sortForces(a: Unit, b: Unit): number {
+	return b.effectivePower - a.effectivePower || b.initiative - a.initiative;
+}
+function sortForTargeting(a: Unit, b: Unit, attacking: Unit): number {
+	return (
+		getDamage(attacking, b) - getDamage(attacking, a) ||
+		b.effectivePower - a.effectivePower ||
+		b.initiative - a.initiative
+	);
+}
+function binarySearchBoost(data: string, limit: number): number {
+	let low = 0;
+	let high = limit;
+
+	while (low <= high) {
+		const mid = Math.floor((low + high) / 2);
+
+		const resultA = simulateBattle(parseInput(data, mid));
+		const resultB = simulateBattle(parseInput(data, mid - 1));
+
+		if (resultA.winner === "Infection" && resultB.winner === "Infection") {
+			low = mid + 1;
+		} else if (resultA.winner === "Immunity" && resultB.winner === "Immunity") {
+			high = mid - 1;
+		} else if (resultA.winner !== resultB.winner) {
+			return resultA.units;
+		}
+	}
+
+	throw RangeError("Insufficent range");
 }
