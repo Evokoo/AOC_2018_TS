@@ -7,10 +7,6 @@ export function solveA(fileName: string, day: string): number {
 	const coordinates = parseInput(data);
 	return countConstellations(coordinates);
 }
-export function solveB(fileName: string, day: string): number {
-	const data = TOOLS.readData(fileName, day);
-	return 0;
-}
 
 type Point_4D = { x: number; y: number; z: number; t: number };
 type Node = {
